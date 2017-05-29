@@ -123,4 +123,23 @@ function elasticsearch_aws_connector_form_elasticsearch_cluster_form_alter(&$for
     ],
     '#weight' => 5.4,
   ];
+
+  $form['#validate'][] = 'elasticsearch_aws_connector_form_elasticsearch_cluster_form_validate';
+}
+
+/**
+ * Form validation for Elasticsearch AWS Connector form.
+ *
+ * @see elasticsearch_aws_connector_form_elasticsearch_cluster_form_alter()
+ */
+function elasticsearch_aws_connector_form_elasticsearch_cluster_form_validate(&$form, \Drupal\Core\Form\FormStateInterface $form_state) {
+  $options = $form_state->getValue('options');
+
+  if (!empty($options['elasticsearch_aws_connector_aws_region'])) {
+    // Lowercase & remove whitespace from AWS region.
+    $aws_region = strtolower(trim($options['elasticsearch_aws_connector_aws_region']));
+    $options['elasticsearch_aws_connector_aws_region'] = $aws_region;
+  }
+
+  $form_state->setValue('options', $options);
 }
