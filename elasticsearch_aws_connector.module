@@ -12,13 +12,12 @@ use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Uri;
 use GuzzleHttp\Ring\Future\CompletedFutureArray;
 
-const ELASTICSEARCH_AWS_CONNECTOR_AWS_REGION = 'eu-west-1';
 const ELASTICSEARCH_AWS_CONNECTOR_AWS_SR_KEY = 'elasticsearch_aws_connector_aws_signed_requests';
 
 /**
  * Implements hook_elasticsearch_connector_load_library_options_alter().
  */
-function elasticsearch_aws_connector_elasticsearch_connector_load_library_options_alter(array &$options) {
+function elasticsearch_aws_connector_elasticsearch_connector_load_library_options_alter(array &$options, \Drupal\elasticsearch_connector\Entity\Cluster $cluster) {
   // Return if no authentication is used.
   if (!isset($options['auth'])) {
     return;
@@ -38,8 +37,15 @@ function elasticsearch_aws_connector_elasticsearch_connector_load_library_option
     return;
   }
 
+  // Return if AWS Region is not set.
+  if (empty($cluster->options['elasticsearch_aws_connector_aws_region'])) {
+    return;
+  }
+
+  $aws_region = $cluster->options['elasticsearch_aws_connector_aws_region'];
+
   $psr7Handler = Aws\default_http_handler();
-  $signer = new SignatureV4('es', ELASTICSEARCH_AWS_CONNECTOR_AWS_REGION);
+  $signer = new SignatureV4('es', $aws_region);
   $credentialProvider = CredentialProvider::defaultProvider();
 
   // Construct the handler that will be used by Elasticsearch-PHP.
