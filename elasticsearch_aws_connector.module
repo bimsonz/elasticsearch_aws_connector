@@ -12,12 +12,34 @@ use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Uri;
 use GuzzleHttp\Ring\Future\CompletedFutureArray;
 
+const ELASTICSEARCH_AWS_CONNECTOR_AWS_REGION = 'eu-west-1';
+const ELASTICSEARCH_AWS_CONNECTOR_AWS_SR_KEY = 'elasticsearch_aws_connector_aws_signed_requests';
+
 /**
  * Implements hook_elasticsearch_connector_load_library_options_alter().
  */
 function elasticsearch_aws_connector_elasticsearch_connector_load_library_options_alter(array &$options) {
+  // Return if no authentication is used.
+  if (!isset($options['auth'])) {
+    return;
+  }
+
+  $sign_requests = FALSE;
+
+  // Loop over the hosts and check if AWS Signed Requests should be applied.
+  foreach ($options['hosts'] as $key => $url) {
+    if ($options['auth'][$url]['method'] == ELASTICSEARCH_AWS_CONNECTOR_AWS_SR_KEY) {
+      $sign_requests = TRUE;
+    }
+  }
+
+  // Return if AWS Signed Requests is not enabled.
+  if (!$sign_requests) {
+    return;
+  }
+
   $psr7Handler = Aws\default_http_handler();
-  $signer = new SignatureV4('es', 'eu-west-1');
+  $signer = new SignatureV4('es', ELASTICSEARCH_AWS_CONNECTOR_AWS_REGION);
   $credentialProvider = CredentialProvider::defaultProvider();
 
   // Construct the handler that will be used by Elasticsearch-PHP.
@@ -68,4 +90,37 @@ function elasticsearch_aws_connector_elasticsearch_connector_load_library_option
       \Drupal::logger('AWS')->error('The request to Amazon could not be signed successfully. Request URI: ' . $request->getUri() . ' Message: ' . $response->getBody());
     }
   };
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ *
+ * Using hook_form_elasticsearch_cluster_form_alter().
+ */
+function elasticsearch_aws_connector_form_elasticsearch_cluster_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) {
+  $cluster = $form['cluster']['#value'];
+
+  // Add our AWS Signed Requests authentication type to the form.
+  if (isset($form['options']['authentication_type'])) {
+    $form['options']['authentication_type']['#options'][ELASTICSEARCH_AWS_CONNECTOR_AWS_SR_KEY] = t('Amazon Web Services - signed requests');
+  }
+
+  // Hide username field when the "AWS signed requests" options is selected.
+  $form['options']['username']['#states']['invisible'][':input[name="options[authentication_type]"]'] = ['value' => ELASTICSEARCH_AWS_CONNECTOR_AWS_SR_KEY];
+  // Hide password field when the "AWS signed requests" options is selected.
+  $form['options']['password']['#states']['invisible'][':input[name="options[authentication_type]"]'] = ['value' => ELASTICSEARCH_AWS_CONNECTOR_AWS_SR_KEY];
+
+  // Show AWS region field when the "AWS signed requests" options is selected.
+  $form['options']['elasticsearch_aws_connector_aws_region'] = [
+    '#type' => 'textfield',
+    '#title' => t('Amazon Web Services - region'),
+    '#description' => t('The region of the AWS cluster.'),
+    '#default_value' => (!empty($cluster->options['elasticsearch_aws_connector_aws_region']) ? $cluster->options['elasticsearch_aws_connector_aws_region'] : ''),
+    '#states' => [
+      'visible' => [
+        ':input[name="options[authentication_type]"]' => ['value' => ELASTICSEARCH_AWS_CONNECTOR_AWS_SR_KEY],
+      ],
+    ],
+    '#weight' => 5.4,
+  ];
 }
