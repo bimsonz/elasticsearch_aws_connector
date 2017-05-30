@@ -40,7 +40,13 @@ INSTALLATION
 CONFIGURATION
 -------------
 
-TODO
+When you select "Use authentication" on the form of the cluster created using "Elasticsearch Connector" module,
+you will have to option to select "Amazon Web Services - signed requests" as "Authentication type".
+When "Amazon Web Services - signed requests" is selected, a field to store the "Amazon Web Services - region" will
+be available in order to define the correct region of the AWS-stack where the Elasticsearch is located.
+A few possible options to enter in the region field:
+ * eu-west-1
+ * us-west-2
 
 
 MAINTAINERS
