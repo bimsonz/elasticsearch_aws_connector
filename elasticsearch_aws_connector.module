@@ -95,7 +95,7 @@ function elasticsearch_aws_connector_elasticsearch_connector_load_library_option
         $exception = $e->getReason()['exception']->getMessage();
 
         drupal_set_message($exception, 'error');
-        \Drupal::logger('AWS')->error('The request to Amazon could not be signed successfully. Exception: ' . $exception . ' Message: ' . $response->getBody());
+        \Drupal::logger('AWS')->error('The request to Amazon could not be signed successfully. Exception: ' . $exception);
       }
     }
   };
