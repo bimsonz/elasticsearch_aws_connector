@@ -90,10 +90,13 @@ function elasticsearch_aws_connector_elasticsearch_connector_load_library_option
     catch (RejectionException $e) {
       /** @var GuzzleHttp\Psr7\Response $response */
       $response = $e->getReason()['response'];
-      /** @var GuzzleHttp\Psr7\Request $request */
-      $request = $e->getReason()['request'];
 
-      \Drupal::logger('AWS')->error('The request to Amazon could not be signed successfully. Request URI: ' . $request->getUri() . ' Message: ' . $response->getBody());
+      if (isset($e->getReason()['exception'])) {
+        $exception = $e->getReason()['exception']->getMessage();
+
+        drupal_set_message($exception, 'error');
+        \Drupal::logger('AWS')->error('The request to Amazon could not be signed successfully. Exception: ' . $exception . ' Message: ' . $response->getBody());
+      }
     }
   };
 }
