@@ -5,12 +5,9 @@
  * Elasticsearch AWS Connector module file.
  */
 
-use GuzzleHttp\Promise\RejectionException;
 use Aws\Credentials\CredentialProvider;
-use Aws\Signature\SignatureV4;
-use GuzzleHttp\Psr7\Request;
-use GuzzleHttp\Psr7\Uri;
-use GuzzleHttp\Ring\Future\CompletedFutureArray;
+use Aws\Credentials\Credentials;
+use Aws\ElasticsearchService\ElasticsearchPhpHandler;
 
 const ELASTICSEARCH_AWS_CONNECTOR_AWS_SR_KEY = 'elasticsearch_aws_connector_aws_signed_requests';
 
@@ -39,66 +36,20 @@ function elasticsearch_aws_connector_elasticsearch_connector_load_library_option
 
   // Return if AWS Region is not set.
   if (empty($cluster->options['elasticsearch_aws_connector_aws_region'])) {
+    drupal_set_message('One must configure the AWS region.');
     return;
   }
 
   $aws_region = $cluster->options['elasticsearch_aws_connector_aws_region'];
-
-  $psr7Handler = Aws\default_http_handler();
-  $signer = new SignatureV4('es', $aws_region);
-  $credentialProvider = CredentialProvider::defaultProvider();
-
-  // Construct the handler that will be used by Elasticsearch-PHP.
-  $options['handler'] = function (array $request) use (
-    $psr7Handler,
-    $signer,
-    $credentialProvider
-  ) {
-    // Amazon ES listens on standard ports (443 for HTTPS, 80 for HTTP).
-    $request['headers']['host'][0] = parse_url($request['headers']['host'][0], PHP_URL_HOST);
-
-    // Create a PSR-7 request from the array passed to the handler.
-    $psr7Request = new Request(
-      $request['http_method'],
-      (new Uri($request['uri']))
-        ->withScheme($request['scheme'])
-        ->withHost($request['headers']['host'][0]),
-      $request['headers'],
-      $request['body']
+  if ($cluster->options['elasticsearch_aws_connector_aws_authentication_type'] == 'aws_credentials') {
+    $provider = CredentialProvider::fromCredentials(
+      new Credentials($cluster->options['elasticsearch_aws_connector_aws_credentials_key'], $cluster->options['elasticsearch_aws_connector_aws_credentials_secret'])
     );
-
-    // Sign the PSR-7 request with credentials from the environment.
-    try {
-      $signedRequest = $signer->signRequest(
-        $psr7Request,
-        call_user_func($credentialProvider)->wait()
-      );
-
-      // Send the signed request to Amazon ES.
-      /** @var \Psr\Http\Message\ResponseInterface $response */
-      $response = $psr7Handler($signedRequest)->wait();
-
-      // Convert the PSR-7 response to a RingPHP response.
-      return new CompletedFutureArray([
-        'status' => $response->getStatusCode(),
-        'headers' => $response->getHeaders(),
-        'body' => $response->getBody()->detach(),
-        'transfer_stats' => ['total_time' => 0],
-        'effective_url' => (string) $psr7Request->getUri(),
-      ]);
-    }
-    catch (RejectionException $e) {
-      /** @var GuzzleHttp\Psr7\Response $response */
-      $response = $e->getReason()['response'];
-
-      if (isset($e->getReason()['exception'])) {
-        $exception = $e->getReason()['exception']->getMessage();
-
-        drupal_set_message($exception, 'error');
-        \Drupal::logger('AWS')->error('The request to Amazon could not be signed successfully. Exception: ' . $exception);
-      }
-    }
-  };
+    $options['handler'] = new ElasticsearchPhpHandler($aws_region, $provider);
+  }
+  else {
+    $options['handler'] = new ElasticsearchPhpHandler($aws_region);
+  }
 }
 
 /**
@@ -121,16 +72,59 @@ function elasticsearch_aws_connector_form_elasticsearch_cluster_form_alter(&$for
 
   // Show AWS region field when the "AWS signed requests" options is selected.
   $form['options']['elasticsearch_aws_connector_aws_region'] = [
-    '#type' => 'textfield',
-    '#title' => t('Amazon Web Services - region'),
-    '#description' => t('The region of the AWS cluster.'),
+    '#type'          => 'textfield',
+    '#title'         => t('Amazon Web Services - region'),
+    '#description'   => t('The region of the AWS cluster.'),
     '#default_value' => (!empty($cluster->options['elasticsearch_aws_connector_aws_region']) ? $cluster->options['elasticsearch_aws_connector_aws_region'] : ''),
-    '#states' => [
+    '#states'        => [
       'visible' => [
         ':input[name="options[authentication_type]"]' => ['value' => ELASTICSEARCH_AWS_CONNECTOR_AWS_SR_KEY],
       ],
     ],
-    '#weight' => 5.4,
+    '#weight'        => 5.4,
+  ];
+
+  $form['options']['elasticsearch_aws_connector_aws_authentication_type'] = [
+    '#type'          => 'select',
+    '#title'         => t('AWS authentication type'),
+    '#description'   => t('Fallback to "AWS IAM Role".'),
+    '#default_value' => (!empty($cluster->options['elasticsearch_aws_connector_aws_authentication_type']) ? $cluster->options['elasticsearch_aws_connector_aws_authentication_type'] : 'aws_role'),
+    '#options'       => [
+      'aws_credentials' => t('AWS credentials'),
+      'aws_role'        => t('AWS IAM Role'),
+    ],
+    '#states'        => [
+      'visible' => [
+        ':input[name="options[authentication_type]"]' => ['value' => ELASTICSEARCH_AWS_CONNECTOR_AWS_SR_KEY],
+      ],
+    ],
+    '#weight'        => 5.5,
+  ];
+
+  $form['options']['elasticsearch_aws_connector_aws_credentials_key'] = [
+    '#type'          => 'textfield',
+    '#title'         => t('AWS credentials key'),
+    '#default_value' => (!empty($cluster->options['elasticsearch_aws_connector_aws_credentials_key']) ? $cluster->options['elasticsearch_aws_connector_aws_credentials_key'] : ''),
+    '#states'        => [
+      'visible' => [
+        ':input[name="options[authentication_type]"]'                                 => ['value' => ELASTICSEARCH_AWS_CONNECTOR_AWS_SR_KEY],
+        ':input[name="options[elasticsearch_aws_connector_aws_authentication_type]"]' => ['value' => 'aws_credentials'],
+      ],
+    ],
+    '#weight'        => 5.5,
+  ];
+
+  $form['options']['elasticsearch_aws_connector_aws_credentials_secret'] = [
+    '#type'          => 'textfield',
+    '#title'         => t('AWS credentials secret'),
+    '#default_value' => (!empty($cluster->options['elasticsearch_aws_connector_aws_credentials_secret']) ? $cluster->options['elasticsearch_aws_connector_aws_credentials_secret'] : ''),
+    '#states'        => [
+      'visible' => [
+        ':input[name="options[authentication_type]"]'                                 => ['value' => ELASTICSEARCH_AWS_CONNECTOR_AWS_SR_KEY],
+        ':input[name="options[elasticsearch_aws_connector_aws_authentication_type]"]' => ['value' => 'aws_credentials'],
+      ],
+    ],
+    '#weight'        => 5.5,
   ];
 
   $form['#validate'][] = 'elasticsearch_aws_connector_form_elasticsearch_cluster_form_validate';
