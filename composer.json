@@ -16,17 +16,8 @@
         "source": "http://cgit.drupalcode.org/elasticsearch_aws_connector"
     },
     "require": {
-        "cweagans/composer-patches": "~1.0",
         "drupal/core": "^8",
         "drupal/elasticsearch_connector": "5.x-dev",
         "jsq/amazon-es-php": "^0.2.0"
-    },
-    "extra": {
-        "patches": {
-            "drupal/elasticsearch_connector": {
-                "Form element weights": "https://www.drupal.org/files/issues/form_element_weights-2882043-4.patch",
-                "Pass Cluster entity in alter library options": "https://www.drupal.org/files/issues/pass_cluster_entity_library_options_alter-2882053-2.patch"
-            }
-        }
     }
 }
