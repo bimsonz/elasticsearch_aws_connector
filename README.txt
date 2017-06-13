@@ -47,6 +47,10 @@ be available in order to define the correct region of the AWS-stack where the El
 A few possible options to enter in the region field:
  * eu-west-1
  * us-west-2
+Also a field to enter your preferred "AWS authentication type" will become available, you can select either:
+ * AWS Credentials
+ * AWS IAM Role
+In case you choose "AWS Credentials" you will also be asked to enter a key and a secret.
 
 
 MAINTAINERS
