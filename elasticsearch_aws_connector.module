@@ -8,6 +8,7 @@
 use Aws\Credentials\CredentialProvider;
 use Aws\Credentials\Credentials;
 use Aws\ElasticsearchService\ElasticsearchPhpHandler;
+use Drupal\elasticsearch_connector\Entity\Cluster;
 
 const ELASTICSEARCH_AWS_CONNECTOR_AWS_SR_KEY = 'elasticsearch_aws_connector_aws_signed_requests';
 
@@ -16,7 +17,7 @@ include_once __DIR__ . '/elasticsearch_aws_connector.forms.inc';
 /**
  * Implements hook_elasticsearch_connector_load_library_options_alter().
  */
-function elasticsearch_aws_connector_elasticsearch_connector_load_library_options_alter(array &$options, \Drupal\elasticsearch_connector\Entity\Cluster $cluster) {
+function elasticsearch_aws_connector_elasticsearch_connector_load_library_options_alter(array &$options, Cluster $cluster) {
   // Return if no authentication is used.
   if (!isset($options['auth'])) {
     return;
