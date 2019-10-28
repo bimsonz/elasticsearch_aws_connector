@@ -1,5 +1,5 @@
 {
-    "name": "drupal/elasticsearch_aws_connector",
+    "name": "bimsonz/elasticsearch_aws_connector",
     "description": "Facilitates integration between Elasticsearch Connector-module and Amazon Web Services using Signed AWS Requests.",
     "type": "drupal-module",
     "homepage": "https://drupal.org/project/elasticsearch_aws_connector",
